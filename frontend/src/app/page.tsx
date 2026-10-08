@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api/client";
 import { Camera, QueryResponse } from "@/types";
+import { VideoPlayer } from "@/components/VideoPlayer";
 
 export default function Dashboard() {
   const [cameras, setCameras] = useState<Camera[]>([]);
@@ -51,19 +52,18 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {cameras.length > 0 ? (
               cameras.map(cam => (
-                <div key={cam.id} className="bg-neutral-900 border border-neutral-800 rounded-lg p-4 flex flex-col justify-between aspect-video">
-                  <div className="flex justify-between items-start">
+                <div key={cam.id} className="bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden flex flex-col aspect-video relative">
+                  <VideoPlayer 
+                    streamUrl={cam.stream_url} 
+                    isLive={cam.status === 'ONLINE'} 
+                  />
+                  <div className="absolute top-0 left-0 w-full p-2 bg-gradient-to-b from-black/80 to-transparent flex justify-between items-start">
                     <div>
-                      <h3 className="font-medium text-neutral-200">{cam.name}</h3>
-                      <p className="text-xs text-neutral-500 font-mono">{cam.id.split('-')[0]}</p>
+                      <h3 className="text-xs font-bold text-white shadow-sm">{cam.name}</h3>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <span className={`h-2 w-2 rounded-full ${cam.status === 'ONLINE' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
-                      <span className="text-xs font-medium">{cam.status}</span>
+                    <div className="flex items-center space-x-1.5">
+                      <span className={`h-2 w-2 rounded-full shadow-sm ${cam.status === 'ONLINE' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
                     </div>
-                  </div>
-                  <div className="text-xs text-neutral-500 flex justify-center items-center h-full">
-                    {cam.status === 'ONLINE' ? 'LIVE STREAM' : 'OFFLINE'}
                   </div>
                 </div>
               ))
@@ -117,17 +117,11 @@ export default function Dashboard() {
                   </div>
                 )}
               </div>
-              <div className="bg-black rounded-md flex items-center justify-center border border-neutral-800 aspect-video relative group cursor-pointer">
-                 {result.results[0]?.evidence.thumbnail_url ? (
-                   <img src={result.results[0].evidence.thumbnail_url} alt="Evidence" className="w-full h-full object-cover rounded-md opacity-80 group-hover:opacity-100 transition-opacity" />
-                 ) : (
-                   <span className="text-neutral-600">No Image</span>
-                 )}
-                 <div className="absolute inset-0 flex items-center justify-center">
-                   <div className="bg-black/50 p-3 rounded-full text-white backdrop-blur-sm group-hover:scale-110 transition-transform">
-                     ▶ View Evidence
-                   </div>
-                 </div>
+              <div className="bg-black rounded-md flex items-center justify-center border border-neutral-800 aspect-video overflow-hidden">
+                 <VideoPlayer 
+                   streamUrl={result.results[0]?.evidence.clip_url}
+                   thumbnailUrl={result.results[0]?.evidence.thumbnail_url}
+                 />
               </div>
             </div>
           </section>

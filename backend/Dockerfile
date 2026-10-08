@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
 
 # Install uv for fast dependency management
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.cargo/bin:${PATH}"
+ENV PATH="/root/.local/bin:${PATH}"
 
 WORKDIR /app
 
@@ -29,4 +29,4 @@ COPY . .
 EXPOSE 8000
 
 # Run the FastAPI app via uvicorn
-CMD ["uv", "run", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

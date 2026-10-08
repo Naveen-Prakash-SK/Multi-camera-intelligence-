@@ -36,10 +36,12 @@ services:
 
   backend:
     build:
-      context: .
-      dockerfile: backend/Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    volumes:
+      - storage_data:/app/storage
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgrespassword@postgres:5432/video_intelligence
       - REDIS_URL=redis://redis:6379/0
@@ -55,9 +57,11 @@ services:
 
   celery_worker:
     build:
-      context: .
-      dockerfile: backend/Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile
     command: ["uv", "run", "celery", "-A", "app.workers.celery_app", "worker", "--loglevel=info"]
+    volumes:
+      - storage_data:/app/storage
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgrespassword@postgres:5432/video_intelligence
       - REDIS_URL=redis://redis:6379/0
@@ -85,3 +89,4 @@ volumes:
   postgres_data:
   redis_data:
   qdrant_data:
+  storage_data:

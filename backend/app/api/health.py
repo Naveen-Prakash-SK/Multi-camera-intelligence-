@@ -12,7 +12,8 @@ router = APIRouter()
 # Dependency or utility functions for health checks
 def check_postgres() -> str:
     try:
-        engine = sqlalchemy.create_engine(settings.DATABASE_URL, connect_args={"connect_timeout": 2})
+        sync_url = settings.DATABASE_URL.replace("postgresql+asyncpg", "postgresql+psycopg2")
+        engine = sqlalchemy.create_engine(sync_url, connect_args={"connect_timeout": 2})
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         return "ONLINE"
@@ -41,7 +42,7 @@ def check_qdrant() -> str:
 
 def check_ollama() -> str:
     try:
-        client = httpx.Client(timeout=2)
+        client = httpx.Client(timeout=10, verify=False, headers={"X-Forwarded-Tunnels-Id": "1"})
         response = client.get(f"{settings.OLLAMA_BASE_URL}/api/tags")
         if response.status_code == 200:
             return "ONLINE"
@@ -53,17 +54,21 @@ def check_ollama() -> str:
 def health() -> Dict[str, str]:
     return {"status": "ONLINE"}
 
-@router.get("/health/services")
+@router.get("/api/health/services")
 def health_services() -> Dict[str, Any]:
     return {
-        "postgres": check_postgres(),
-        "redis": check_redis(),
-        "qdrant": check_qdrant(),
-        "ollama": check_ollama(),
-        "gateway": "NOT_CONFIGURED" # Gateway check to be implemented
+        "api": "ONLINE",
+        "services": {
+            "postgresql": check_postgres(),
+            "redis": check_redis(),
+            "qdrant": check_qdrant(),
+        },
+        "models": {
+            "ollama": check_ollama(),
+        }
     }
 
-@router.get("/health/models")
+@router.get("/api/health/models")
 def health_models() -> Dict[str, Any]:
     # Placeholder for actual model availability checks
     ollama_status = check_ollama()
@@ -78,7 +83,7 @@ def health_models() -> Dict[str, Any]:
     
     if ollama_status == "ONLINE":
         try:
-            client = httpx.Client(timeout=2)
+            client = httpx.Client(timeout=10, verify=False, headers={"X-Forwarded-Tunnels-Id": "1"})
             response = client.get(f"{settings.OLLAMA_BASE_URL}/api/tags")
             if response.status_code == 200:
                 available_models = [m["name"] for m in response.json().get("models", [])]

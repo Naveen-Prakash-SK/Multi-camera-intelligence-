@@ -6,15 +6,21 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.20.0",
+    "asyncpg>=0.32.0",
     "celery>=5.6.3",
     "fastapi>=0.143.0",
+    "greenlet>=3.5.6",
     "httpx>=0.28.1",
+    "openai>=3.26.1",
+    "opencv-python-headless>=5.0.0.93",
     "psycopg2-binary>=2.9.13",
     "pydantic>=2.13.5",
     "pydantic-settings>=2.15.0",
     "python-dotenv>=1.2.4",
+    "python-multipart>=0.0.32",
     "qdrant-client>=1.19.1",
     "redis>=8.1.0",
+    "requests>=2.34.2",
     "sqlalchemy>=2.1.4",
     "uvicorn>=0.54.0",
 ]
