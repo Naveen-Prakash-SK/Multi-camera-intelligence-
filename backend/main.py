@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from app.api import health, cameras, footage, memory, query
+from app.api import health, cameras, footage, memory, query, evidence, timeline, standing_queries
 from app.core.config import settings
 from app.vector.qdrant import init_qdrant
 
@@ -40,6 +40,9 @@ def create_app() -> FastAPI:
     app.include_router(footage.router)
     app.include_router(memory.router)
     app.include_router(query.router)
+    app.include_router(evidence.router)
+    app.include_router(timeline.router)
+    app.include_router(standing_queries.router)
 
     return app
 

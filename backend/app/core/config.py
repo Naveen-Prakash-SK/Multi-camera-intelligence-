@@ -23,7 +23,10 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_REASONING_MODEL: str = "qwen2.5:14b" # Fallback if specific version not provided
     OLLAMA_VISION_MODEL: str = "llava:13b"
-    OLLAMA_TIMEOUT: int = 30
+    OLLAMA_TIMEOUT: float = 30.0
+    # Optional basic auth when Ollama is exposed through an authenticated tunnel
+    OLLAMA_AUTH_USER: Optional[str] = None
+    OLLAMA_AUTH_PASSWORD: Optional[str] = None
     
     # Storage
     STORAGE_PATH: str = "./storage"

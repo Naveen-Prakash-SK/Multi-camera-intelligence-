@@ -1,0 +1,30 @@
+[
+  {
+    "id": "test_001",
+    "expected_camera": "cam_03",
+    "expected_event": "car_detected",
+    "must_verify": true
+  },
+  {
+    "id": "test_002",
+    "expected_timeline": ["cam_03", "cam_04"],
+    "must_verify": true
+  },
+  {
+    "id": "test_003",
+    "expected_camera": "cam_02",
+    "expected_event": "person_detected",
+    "must_verify": true
+  },
+  {
+    "id": "test_004",
+    "expected_camera": "cam_05",
+    "expected_event": "truck_detected",
+    "must_verify": true
+  },
+  {
+    "id": "test_negative_001",
+    "expected_answer_grounded": false,
+    "must_verify": false
+  }
+]

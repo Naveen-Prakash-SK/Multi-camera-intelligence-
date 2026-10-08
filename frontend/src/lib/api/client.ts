@@ -73,6 +73,26 @@ class ApiClient {
     return this.request<Camera>(`/api/cameras/${id}`);
   }
 
+  async createCamera(camera: Partial<Camera>): Promise<Camera> {
+    return this.request<Camera>("/api/cameras", {
+      method: "POST",
+      body: JSON.stringify(camera),
+    });
+  }
+
+  async updateCamera(id: string, camera: Partial<Camera>): Promise<Camera> {
+    return this.request<Camera>(`/api/cameras/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(camera),
+    });
+  }
+
+  async deleteCamera(id: string): Promise<{ status: string }> {
+    return this.request<{ status: string }>(`/api/cameras/${id}`, {
+      method: "DELETE",
+    });
+  }
+
   async startCamera(id: string): Promise<{ status: string }> {
     return this.request<{ status: string }>(`/api/cameras/${id}/start`, { method: "POST" });
   }
@@ -106,11 +126,19 @@ class ApiClient {
     });
   }
 
-  // Query
-  async query(query: string, sessionId?: string): Promise<QueryResponse> {
+  // Timeline
+  async getTimeline(globalIdentityId: string): Promise<any> {
+    return this.request<any>(`/api/timeline/${globalIdentityId}`);
+  }
+
+  async query(query: string, sessionId?: string, clarificationAnswer?: any): Promise<QueryResponse> {
     return this.request<QueryResponse>("/api/query", {
       method: "POST",
-      body: JSON.stringify({ query, session_id: sessionId }),
+      body: JSON.stringify({ 
+        query, 
+        session_id: sessionId,
+        clarification_answer: clarificationAnswer
+      }),
     });
   }
 }

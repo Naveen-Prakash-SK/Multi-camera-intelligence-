@@ -13,6 +13,7 @@ dependencies = [
     "httpx>=0.28.1",
     "openai>=3.26.1",
     "opencv-python-headless>=5.0.0.93",
+    "pillow>=12.3.0",
     "psycopg2-binary>=2.9.13",
     "pydantic>=2.13.5",
     "pydantic-settings>=2.15.0",
@@ -22,5 +23,8 @@ dependencies = [
     "redis>=8.1.0",
     "requests>=2.34.2",
     "sqlalchemy>=2.1.4",
+    "torch>=2.14.1",
+    "torchvision>=0.29.1",
+    "transformers>=5.19.0",
     "uvicorn>=0.54.0",
 ]

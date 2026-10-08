@@ -11,6 +11,8 @@ export interface Camera {
   stream_url?: string;
   status: "ONLINE" | "OFFLINE" | "ERROR" | "CONNECTING";
   clock_offset_ms: number;
+  location?: string;
+  description?: string;
 }
 
 export interface VideoFile {
@@ -86,6 +88,7 @@ export interface QueryResponse {
   coverage: Record<string, any>;
   results: QueryResultItem[];
   trace_id: string;
+  confidence: number;
 }
 
 export interface SystemHealth {

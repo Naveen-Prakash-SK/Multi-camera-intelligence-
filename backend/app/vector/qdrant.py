@@ -7,31 +7,64 @@ import uuid
 qdrant_client = QdrantClient(url=settings.QDRANT_URL)
 
 COLLECTION_NAME = "video_frames"
-VECTOR_SIZE = 1536 # Default for many text embedding models (e.g., openai text-embedding-ada-002 or Qwen equivalents if configurable)
+VECTOR_SIZE = 512 # CLIP models usually output 512 dimensions
 
-def init_qdrant():
+def init_qdrant(vector_size: int = VECTOR_SIZE):
     collections = qdrant_client.get_collections().collections
     if not any(c.name == COLLECTION_NAME for c in collections):
         qdrant_client.create_collection(
             collection_name=COLLECTION_NAME,
-            vectors_config=VectorParams(size=VECTOR_SIZE, distance=Distance.COSINE),
+            vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
+        )
+        
+        # Create payload indexes for faster filtering
+        from qdrant_client.http import models as rest
+        qdrant_client.create_payload_index(
+            collection_name=COLLECTION_NAME,
+            field_name="camera_id",
+            field_schema=rest.PayloadSchemaType.KEYWORD
+        )
+        qdrant_client.create_payload_index(
+            collection_name=COLLECTION_NAME,
+            field_name="timestamp_s",
+            field_schema=rest.PayloadSchemaType.FLOAT
         )
 
-def index_frame(frame_id: uuid.UUID, video_id: uuid.UUID, camera_id: uuid.UUID, timestamp_s: float, embedding: list[float], attributes: dict = None):
+def index_frame(
+    vector_id: uuid.UUID,
+    embedding: list[float],
+    camera_id: uuid.UUID,
+    video_id: uuid.UUID,
+    frame_id: uuid.UUID,
+    timestamp_s: float,
+    detection_id: uuid.UUID = None,
+    track_id: str = None,
+    event_id: uuid.UUID = None,
+    label: str = None,
+    confidence: float = None,
+    bounding_box: dict = None,
+    attributes: dict = None
+):
     payload = {
-        "frame_id": str(frame_id),
-        "video_id": str(video_id),
         "camera_id": str(camera_id),
+        "video_id": str(video_id),
+        "frame_id": str(frame_id),
         "timestamp_s": timestamp_s,
     }
-    if attributes:
-        payload.update(attributes)
+    
+    if detection_id: payload["detection_id"] = str(detection_id)
+    if track_id: payload["track_id"] = track_id
+    if event_id: payload["event_id"] = str(event_id)
+    if label: payload["label"] = label
+    if confidence is not None: payload["confidence"] = confidence
+    if bounding_box: payload["bounding_box"] = bounding_box
+    if attributes: payload["attributes"] = attributes
         
     qdrant_client.upsert(
         collection_name=COLLECTION_NAME,
         points=[
             PointStruct(
-                id=str(frame_id),
+                id=str(vector_id),
                 vector=embedding,
                 payload=payload
             )

@@ -6,6 +6,7 @@ import redis
 import sqlalchemy
 from sqlalchemy import text
 from qdrant_client import QdrantClient
+from app.api.llm_service import OLLAMA_AUTH
 
 router = APIRouter()
 
@@ -42,13 +43,14 @@ def check_qdrant() -> str:
 
 def check_ollama() -> str:
     try:
-        client = httpx.Client(timeout=10, verify=False, headers={"X-Forwarded-Tunnels-Id": "1"})
-        response = client.get(f"{settings.OLLAMA_BASE_URL}/api/tags")
+        url = f"{settings.OLLAMA_BASE_URL.rstrip('/')}/api/tags"
+        client = httpx.Client(timeout=10, verify=False, headers={"ngrok-skip-browser-warning": "true"}, auth=OLLAMA_AUTH)
+        response = client.get(url)
         if response.status_code == 200:
             return "ONLINE"
         return f"DEGRADED: Status {response.status_code}"
     except Exception as e:
-        return f"OFFLINE"
+        return f"OFFLINE: {str(e)}"
 
 @router.get("/api/health")
 def health() -> Dict[str, str]:
@@ -73,24 +75,25 @@ def health_models() -> Dict[str, Any]:
     # Placeholder for actual model availability checks
     ollama_status = check_ollama()
     models = {
-        "qwen3-8b": "OFFLINE",
-        "qwen3-vl": "OFFLINE",
+        settings.OLLAMA_REASONING_MODEL: "OFFLINE",
+        settings.OLLAMA_VISION_MODEL: "OFFLINE",
         "bge-m3": "OFFLINE",
         "siglip-2": "OFFLINE",
         "yolo": "OFFLINE",
         "reid": "OFFLINE"
     }
-    
+
     if ollama_status == "ONLINE":
         try:
-            client = httpx.Client(timeout=10, verify=False, headers={"X-Forwarded-Tunnels-Id": "1"})
-            response = client.get(f"{settings.OLLAMA_BASE_URL}/api/tags")
+            url = f"{settings.OLLAMA_BASE_URL.rstrip('/')}/api/tags"
+            client = httpx.Client(timeout=10, verify=False, headers={"ngrok-skip-browser-warning": "true"}, auth=OLLAMA_AUTH)
+            response = client.get(url)
             if response.status_code == 200:
                 available_models = [m["name"] for m in response.json().get("models", [])]
                 if any(settings.OLLAMA_REASONING_MODEL in m for m in available_models):
-                    models["qwen3-8b"] = "ONLINE"
+                    models[settings.OLLAMA_REASONING_MODEL] = "ONLINE"
                 if any(settings.OLLAMA_VISION_MODEL in m for m in available_models):
-                    models["qwen3-vl"] = "ONLINE"
+                    models[settings.OLLAMA_VISION_MODEL] = "ONLINE"
         except:
             pass
             

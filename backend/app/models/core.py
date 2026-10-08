@@ -97,3 +97,23 @@ class QueryHistory(Base):
     result_ids: Mapped[dict] = mapped_column(JSONB, nullable=True)
     latency_s: Mapped[float] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+class StandingQuery(Base):
+    __tablename__ = 'standing_query'
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    original_query: Mapped[str] = mapped_column(String, nullable=False)
+    structured_query: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    camera_id: Mapped[uuid.UUID] = mapped_column(ForeignKey('camera.id'), nullable=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    last_triggered: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+
+class GlobalTrack(Base):
+    __tablename__ = 'global_track'
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    local_track_id: Mapped[str] = mapped_column(String, nullable=False)
+    camera_id: Mapped[uuid.UUID] = mapped_column(ForeignKey('camera.id'))
+    first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+
