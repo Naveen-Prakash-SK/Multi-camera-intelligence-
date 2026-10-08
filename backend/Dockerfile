@@ -20,6 +20,8 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 
 # Install dependencies using uv
+ENV UV_NATIVE_TLS=1
+ENV UV_SYSTEM_CERTS=1
 RUN uv sync --frozen
 
 # Copy the rest of the application code

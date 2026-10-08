@@ -8,17 +8,27 @@ interface VideoPlayerProps {
 
 export function VideoPlayer({ streamUrl, thumbnailUrl, isLive }: VideoPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [viewMode, setViewMode] = useState<'raw' | 'processed'>('processed');
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Re-trigger load when streamUrl or viewMode changes
+  useEffect(() => {
+    if (videoRef.current && streamUrl) {
+      videoRef.current.src = `${streamUrl}?type=${viewMode}`;
+      videoRef.current.load();
+      if (isPlaying) {
+        videoRef.current.play().catch(() => {});
+      }
+    }
+  }, [streamUrl, viewMode]);
 
   useEffect(() => {
     if (isLive && videoRef.current && streamUrl) {
-      // For a real app, you would initialize HLS.js or WebRTC here.
-      // For this demo, we'll just try to play standard video if possible.
-      videoRef.current.src = streamUrl;
+      videoRef.current.src = `${streamUrl}?type=${viewMode}`;
       videoRef.current.play().catch(() => {});
       setIsPlaying(true);
     }
-  }, [isLive, streamUrl]);
+  }, [isLive]);
 
   const togglePlay = () => {
     if (videoRef.current) {
@@ -73,6 +83,24 @@ export function VideoPlayer({ streamUrl, thumbnailUrl, isLive }: VideoPlayerProp
         <div className="absolute top-2 right-2 bg-red-600/90 text-white text-[10px] font-bold px-2 py-1 rounded tracking-widest backdrop-blur-sm flex items-center">
           <span className="w-1.5 h-1.5 bg-white rounded-full mr-1 animate-pulse" />
           LIVE
+        </div>
+      )}
+
+      {/* Raw / Processed Toggle for Evidence Videos */}
+      {!isLive && streamUrl && (
+        <div className="absolute top-2 right-2 flex bg-black/50 backdrop-blur-sm rounded-lg p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+          <button 
+            onClick={(e) => { e.stopPropagation(); setViewMode('raw'); }}
+            className={`px-3 py-1 text-xs font-bold rounded-md ${viewMode === 'raw' ? 'bg-white text-black' : 'text-white hover:bg-white/20'}`}
+          >
+            RAW
+          </button>
+          <button 
+            onClick={(e) => { e.stopPropagation(); setViewMode('processed'); }}
+            className={`px-3 py-1 text-xs font-bold rounded-md ${viewMode === 'processed' ? 'bg-white text-black' : 'text-white hover:bg-white/20'}`}
+          >
+            PROCESSED
+          </button>
         </div>
       )}
     </div>

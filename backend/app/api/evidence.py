@@ -7,6 +7,7 @@ from app.models.core import Evidence, VideoFile
 import uuid
 import os
 import subprocess
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -23,7 +24,7 @@ async def get_evidence_thumbnail(id: str, db: AsyncSession = Depends(get_db)):
     return FileResponse(evidence.frame_path, media_type="image/jpeg")
 
 @router.get("/api/evidence/{id}/clip")
-async def get_evidence_clip(id: str, db: AsyncSession = Depends(get_db)):
+async def get_evidence_clip(id: str, type: str = "raw", db: AsyncSession = Depends(get_db)):
     # Extract a 10s clip around the event using ffmpeg stream copy
     result = await db.execute(select(Evidence).where(Evidence.id == uuid.UUID(id)))
     evidence = result.scalars().first()
@@ -33,10 +34,20 @@ async def get_evidence_clip(id: str, db: AsyncSession = Depends(get_db)):
     # Get the parent video
     video_res = await db.execute(select(VideoFile).where(VideoFile.id == evidence.video_id))
     video = video_res.scalars().first()
-    if not video or not os.path.exists(video.file_path):
+    if not video:
         raise HTTPException(status_code=404, detail="Source video not found")
         
-    clip_filename = f"/app/storage/clip_{id}.mp4"
+    source_path = video.file_path
+    if type == "processed":
+        annotated_path = os.path.join(settings.STORAGE_PATH, f"annotated_{video.id}.mp4")
+        if os.path.exists(annotated_path):
+            source_path = annotated_path
+            
+    if not os.path.exists(source_path):
+        raise HTTPException(status_code=404, detail="Video file missing on disk")
+        
+    os.makedirs(settings.STORAGE_PATH, exist_ok=True)
+    clip_filename = os.path.join(settings.STORAGE_PATH, f"clip_{type}_{id}.mp4")
     if os.path.exists(clip_filename):
         return FileResponse(clip_filename, media_type="video/mp4")
         
@@ -46,7 +57,7 @@ async def get_evidence_clip(id: str, db: AsyncSession = Depends(get_db)):
     cmd = [
         "ffmpeg", "-y",
         "-ss", str(start_time),
-        "-i", video.file_path,
+        "-i", source_path,
         "-t", "10",
         "-c", "copy",
         clip_filename

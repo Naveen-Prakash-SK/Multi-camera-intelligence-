@@ -2,7 +2,7 @@ import cv2
 import httpx
 import numpy as np
 
-stream_url = "https://3h2t93jj-8001.inc1.devtunnels.ms/"
+stream_url = "http://127.0.0.1:8001/"
 
 def check_stream():
     print(f"Checking stream at {stream_url}...")

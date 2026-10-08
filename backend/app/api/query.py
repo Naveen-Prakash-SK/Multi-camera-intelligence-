@@ -9,11 +9,18 @@ from app.models.core import QueryHistory, Camera, Frame, Evidence
 from app.vector.qdrant import search_frames
 from app.api.llm_service import parse_query_with_llm, verify_evidence_with_vlm
 from app.models.events import SceneMemory
-from app.vector.embeddings import embedding_service
 import uuid
 from datetime import datetime, timezone
 
 router = APIRouter()
+
+embedding_service = None
+def get_embedding_service():
+    global embedding_service
+    if embedding_service is None:
+        from app.vector.embeddings import EmbeddingService
+        embedding_service = EmbeddingService()
+    return embedding_service
 
 class QueryRequest(BaseModel):
     query: str
@@ -97,7 +104,13 @@ async def execute_query(req: QueryRequest, db: AsyncSession = Depends(get_db)):
             verdict="CLARIFICATION_REQUIRED",
             answer=f"Which camera represents '{parsed['location']}'?",
             grounded=False,
-            resolved={"location": parsed["location"]},
+            resolved={
+                "location": parsed["location"],
+                "clarification_needed": {
+                    "entity_name": parsed["location"],
+                    "candidates": candidates
+                }
+            },
             coverage={"candidates": candidates},
             results=[],
             trace_id=trace_id
@@ -112,7 +125,7 @@ async def execute_query(req: QueryRequest, db: AsyncSession = Depends(get_db)):
     db.add(history)
     
     # 4. Convert text query to Embedding
-    query_emb = embedding_service.encode_text(req.query)
+    query_emb = get_embedding_service().encode_text(req.query)
     
     # Process time range
     time_filter = None
@@ -144,10 +157,6 @@ async def execute_query(req: QueryRequest, db: AsyncSession = Depends(get_db)):
     # 6. Construct Results & Verification
     response_items = []
     
-    # OwlViT verification (model weights are cached across requests)
-    from app.vector.detection import get_detection_service
-    detection_svc = get_detection_service()
-    
     for hit in search_results:
         camera_id = hit.payload.get("camera_id")
         timestamp_s = hit.payload.get("timestamp_s")
@@ -159,13 +168,6 @@ async def execute_query(req: QueryRequest, db: AsyncSession = Depends(get_db)):
         if not frame_obj:
             continue
             
-        # OwlViT Query-Driven Verification
-        owlvit_detections = detection_svc.detect_with_query(frame_obj.frame_path, req.query, threshold=0.08)
-        if not owlvit_detections:
-            continue # Prune if OwlViT doesn't see concepts related to the query
-            
-        best_owl_score = max([d["confidence"] for d in owlvit_detections])
-        
         # Resolve camera name
         camera = await db.execute(select(Camera).where(Camera.id == uuid.UUID(camera_id)))
         camera_obj = camera.scalars().first()
@@ -176,7 +178,7 @@ async def execute_query(req: QueryRequest, db: AsyncSession = Depends(get_db)):
         if not vlm_res.get("match", False):
             continue
             
-        final_confidence = (hit.score * 0.3) + (best_owl_score * 0.3) + (vlm_res.get("confidence", 0.0) * 0.4)
+        final_confidence = (hit.score * 0.5) + (vlm_res.get("confidence", 0.0) * 0.5)
 
         # Persist the evidence so the thumbnail/clip endpoints can resolve it
         evd = Evidence(
@@ -254,3 +256,18 @@ async def get_query_trace(id: str, db: AsyncSession = Depends(get_db)):
         "result_ids": history.result_ids,
         "created_at": history.created_at
     }
+
+@router.get("/api/queries")
+async def get_recent_queries(limit: int = 10, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(QueryHistory).order_by(QueryHistory.created_at.desc()).limit(limit)
+    )
+    queries = result.scalars().all()
+    return [
+        {
+            "id": str(h.id),
+            "query": h.query,
+            "parsed_query": h.parsed_query,
+            "created_at": h.created_at.isoformat()
+        } for h in queries
+    ]

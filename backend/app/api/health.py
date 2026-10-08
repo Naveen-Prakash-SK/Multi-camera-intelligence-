@@ -44,7 +44,18 @@ def check_qdrant() -> str:
 def check_ollama() -> str:
     try:
         url = f"{settings.OLLAMA_BASE_URL.rstrip('/')}/api/tags"
-        client = httpx.Client(timeout=10, verify=False, headers={"ngrok-skip-browser-warning": "true"}, auth=OLLAMA_AUTH)
+        client = httpx.Client(timeout=1.0, verify=False, headers={"ngrok-skip-browser-warning": "true"}, auth=OLLAMA_AUTH)
+        response = client.get(url)
+        if response.status_code == 200:
+            return "ONLINE"
+        return f"DEGRADED: Status {response.status_code}"
+    except Exception as e:
+        return f"OFFLINE: {str(e)}"
+
+def check_live_stream() -> str:
+    try:
+        url = "http://host.docker.internal:8001/health"
+        client = httpx.Client(timeout=2.0, verify=False)
         response = client.get(url)
         if response.status_code == 200:
             return "ONLINE"
@@ -64,6 +75,7 @@ def health_services() -> Dict[str, Any]:
             "postgresql": check_postgres(),
             "redis": check_redis(),
             "qdrant": check_qdrant(),
+            "live_stream": check_live_stream(),
         },
         "models": {
             "ollama": check_ollama(),
@@ -86,7 +98,7 @@ def health_models() -> Dict[str, Any]:
     if ollama_status == "ONLINE":
         try:
             url = f"{settings.OLLAMA_BASE_URL.rstrip('/')}/api/tags"
-            client = httpx.Client(timeout=10, verify=False, headers={"ngrok-skip-browser-warning": "true"}, auth=OLLAMA_AUTH)
+            client = httpx.Client(timeout=1.0, verify=False, headers={"ngrok-skip-browser-warning": "true"}, auth=OLLAMA_AUTH)
             response = client.get(url)
             if response.status_code == 200:
                 available_models = [m["name"] for m in response.json().get("models", [])]

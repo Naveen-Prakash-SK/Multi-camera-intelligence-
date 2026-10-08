@@ -46,9 +46,7 @@ services:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgrespassword@postgres:5432/video_intelligence
       - REDIS_URL=redis://redis:6379/0
       - QDRANT_URL=http://qdrant:6333
-      - OLLAMA_BASE_URL=https://rhn43w49-11434.inc1.devtunnels.ms
-      - OLLAMA_AUTH_USER=ollama
-      - OLLAMA_AUTH_PASSWORD=123456789
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
     depends_on:
       postgres:
         condition: service_healthy
@@ -68,9 +66,7 @@ services:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgrespassword@postgres:5432/video_intelligence
       - REDIS_URL=redis://redis:6379/0
       - QDRANT_URL=http://qdrant:6333
-      - OLLAMA_BASE_URL=https://rhn43w49-11434.inc1.devtunnels.ms
-      - OLLAMA_AUTH_USER=ollama
-      - OLLAMA_AUTH_PASSWORD=123456789
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
     depends_on:
       postgres:
         condition: service_healthy

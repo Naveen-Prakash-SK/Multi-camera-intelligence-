@@ -7,7 +7,7 @@ async def add_camera():
         "name": "Live API Camera",
         "description": "Live Stream from Dev Tunnel",
         "source_type": "live",
-        "stream_url": "https://3h2t93jj-8001.inc1.devtunnels.ms/",
+        "stream_url": "http://127.0.0.1:8001/api/stream/CAM01",
         "location": "Live Camera 1"
     }
     

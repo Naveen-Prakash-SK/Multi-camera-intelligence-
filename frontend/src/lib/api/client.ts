@@ -101,6 +101,10 @@ class ApiClient {
     return this.request<{ status: string }>(`/api/cameras/${id}/stop`, { method: "POST" });
   }
 
+  async recordCamera(id: string, duration: number = 10): Promise<{ job_id: string, status: string }> {
+    return this.request<{ job_id: string, status: string }>(`/api/cameras/${id}/record?duration=${duration}`, { method: "POST" });
+  }
+
   // Footage Upload
   async uploadFootage(file: File, cameraId: string, captureStartUtc: string): Promise<any> {
     const formData = new FormData();
@@ -140,6 +144,22 @@ class ApiClient {
         clarification_answer: clarificationAnswer
       }),
     });
+  }
+  
+  // Standing Queries and Alerts
+  async getStandingQueries(): Promise<any[]> {
+    return this.request<any[]>("/api/standing-queries");
+  }
+
+  async createStandingQuery(data: { query: string, condition: string, cooldown_seconds: number }): Promise<any> {
+    return this.request<any>("/api/standing-queries", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+  
+  async getAlerts(limit: number = 20): Promise<any[]> {
+    return this.request<any[]>(`/api/alerts?limit=${limit}`);
   }
 }
 

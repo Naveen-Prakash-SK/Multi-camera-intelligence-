@@ -12,7 +12,7 @@ export default function CamerasPage() {
   
   // Form state
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({ id: "", name: "", location: "", description: "" });
+  const [formData, setFormData] = useState({ id: "", name: "", location: "", description: "", source_type: "file", stream_url: "" });
   const [isEditing, setIsEditing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -44,7 +44,7 @@ export default function CamerasPage() {
       }
       await fetchCameras();
       setShowForm(false);
-      setFormData({ id: "", name: "", location: "", description: "" });
+      setFormData({ id: "", name: "", location: "", description: "", source_type: "file", stream_url: "" });
     } catch (err: any) {
       setError(err.message || "Failed to save camera");
     } finally {
@@ -77,13 +77,13 @@ export default function CamerasPage() {
   };
 
   const openEdit = (cam: Camera) => {
-    setFormData({ id: cam.id, name: cam.name, location: cam.location || "", description: cam.description || "" });
+    setFormData({ id: cam.id, name: cam.name, location: cam.location || "", description: cam.description || "", source_type: cam.source_type || "file", stream_url: cam.stream_url || "" });
     setIsEditing(true);
     setShowForm(true);
   };
 
   const openCreate = () => {
-    setFormData({ id: "", name: "", location: "", description: "" });
+    setFormData({ id: "", name: "", location: "", description: "", source_type: "file", stream_url: "" });
     setIsEditing(false);
     setShowForm(true);
   };
@@ -142,6 +142,30 @@ export default function CamerasPage() {
                 />
               </div>
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-neutral-400 mb-1">Source Type</label>
+                <select 
+                  value={formData.source_type}
+                  onChange={(e) => setFormData({...formData, source_type: e.target.value})}
+                  className="w-full bg-black/50 border border-neutral-700 rounded-lg px-4 py-2 text-white focus:border-blue-500 focus:outline-none"
+                >
+                  <option value="file">Recorded Source</option>
+                  <option value="live">Live API Stream</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-400 mb-1">Stream URL (Optional)</label>
+                <input 
+                  type="text" 
+                  value={formData.stream_url}
+                  onChange={(e) => setFormData({...formData, stream_url: e.target.value})}
+                  className="w-full bg-black/50 border border-neutral-700 rounded-lg px-4 py-2 text-white focus:border-blue-500 focus:outline-none disabled:opacity-50"
+                  placeholder="e.g. http://127.0.0.1:8001/health"
+                  disabled={formData.source_type !== 'live'}
+                />
+              </div>
+            </div>
             <div>
               <label className="block text-sm font-medium text-neutral-400 mb-1">Description (Optional)</label>
               <textarea 
@@ -176,49 +200,114 @@ export default function CamerasPage() {
           {[1,2,3].map(i => <div key={i} className="h-48 bg-neutral-900 rounded-xl animate-pulse"></div>)}
         </div>
       ) : cameras.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {cameras.map(cam => (
-            <div key={cam.id} className="bg-neutral-900 border border-neutral-800 rounded-xl p-5 shadow-lg flex flex-col hover:border-neutral-700 transition-colors">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="font-bold text-white text-lg flex items-center">
-                    {cam.name}
-                    <span className="ml-3 bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest">
-                      Recorded Source
-                    </span>
-                  </h3>
-                  <p className="text-sm text-neutral-400 mt-1">{cam.location}</p>
-                </div>
-                <div className={`px-2 py-1 rounded border text-[10px] font-bold tracking-widest uppercase ${cam.status === 'ONLINE' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-neutral-800 text-neutral-500 border-neutral-700'}`}>
-                  {cam.status === 'ONLINE' ? 'READY' : 'OFFLINE'}
-                </div>
+        <div className="space-y-12">
+          {/* LIVE CAMERAS */}
+          {cameras.some(c => c.source_type === 'live') && (
+            <div>
+              <div className="mb-4 flex items-center">
+                <div className="w-2 h-2 rounded-full bg-red-500 mr-2 animate-pulse"></div>
+                <h2 className="text-xl font-bold text-white">Live API Cameras</h2>
               </div>
-              
-              <p className="text-sm text-neutral-500 mb-6 flex-1">{cam.description || "No description provided."}</p>
-              
-              <div className="flex items-center justify-between pt-4 border-t border-neutral-800">
-                <button 
-                  onClick={() => toggleStatus(cam)}
-                  className={`flex items-center text-sm font-medium transition-colors ${cam.status === 'ONLINE' ? 'text-red-400 hover:text-red-300' : 'text-emerald-400 hover:text-emerald-300'}`}
-                >
-                  {cam.status === 'ONLINE' ? (
-                    <><Square className="w-4 h-4 mr-1.5" /> Stop</>
-                  ) : (
-                    <><Play className="w-4 h-4 mr-1.5" /> Start</>
-                  )}
-                </button>
-                
-                <div className="flex space-x-2">
-                  <button onClick={() => openEdit(cam)} className="p-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-neutral-300 transition-colors">
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => handleDelete(cam.id)} className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded-lg text-red-400 transition-colors">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {cameras.filter(c => c.source_type === 'live').map(cam => (
+                  <div key={cam.id} className="bg-neutral-900 border border-neutral-800 rounded-xl p-5 shadow-lg flex flex-col hover:border-neutral-700 transition-colors">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="font-bold text-white text-lg flex items-center">
+                          {cam.name}
+                          <span className="ml-3 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-red-500/10 text-red-400 border border-red-500/20">
+                            Live Source
+                          </span>
+                        </h3>
+                        <p className="text-sm text-neutral-400 mt-1">{cam.location}</p>
+                      </div>
+                      <div className={`px-2 py-1 rounded border text-[10px] font-bold tracking-widest uppercase ${cam.status === 'ONLINE' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-neutral-800 text-neutral-500 border-neutral-700'}`}>
+                        {cam.status === 'ONLINE' ? 'READY' : 'OFFLINE'}
+                      </div>
+                    </div>
+                    
+                    <p className="text-sm text-neutral-500 mb-6 flex-1">{cam.description || "No description provided."}</p>
+                    
+                    <div className="flex items-center justify-between pt-4 border-t border-neutral-800">
+                      <button 
+                        onClick={() => toggleStatus(cam)}
+                        className={`flex items-center text-sm font-medium transition-colors ${cam.status === 'ONLINE' ? 'text-red-400 hover:text-red-300' : 'text-emerald-400 hover:text-emerald-300'}`}
+                      >
+                        {cam.status === 'ONLINE' ? (
+                          <><Square className="w-4 h-4 mr-1.5" /> Stop</>
+                        ) : (
+                          <><Play className="w-4 h-4 mr-1.5" /> Start</>
+                        )}
+                      </button>
+                      
+                      <div className="flex space-x-2">
+                        <button onClick={() => openEdit(cam)} className="p-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-neutral-300 transition-colors">
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleDelete(cam.id)} className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded-lg text-red-400 transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
+          )}
+
+          {/* RECORDED CAMERAS */}
+          {cameras.some(c => c.source_type !== 'live') && (
+            <div>
+              <div className="mb-4">
+                <h2 className="text-xl font-bold text-white">Recorded Sources</h2>
+                <p className="text-sm text-neutral-500">Virtual cameras for uploaded footage analysis.</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {cameras.filter(c => c.source_type !== 'live').map(cam => (
+                  <div key={cam.id} className="bg-neutral-900 border border-neutral-800 rounded-xl p-5 shadow-lg flex flex-col hover:border-neutral-700 transition-colors">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="font-bold text-white text-lg flex items-center">
+                          {cam.name}
+                          <span className="ml-3 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                            Recorded Source
+                          </span>
+                        </h3>
+                        <p className="text-sm text-neutral-400 mt-1">{cam.location}</p>
+                      </div>
+                      <div className={`px-2 py-1 rounded border text-[10px] font-bold tracking-widest uppercase ${cam.status === 'ONLINE' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-neutral-800 text-neutral-500 border-neutral-700'}`}>
+                        {cam.status === 'ONLINE' ? 'READY' : 'OFFLINE'}
+                      </div>
+                    </div>
+                    
+                    <p className="text-sm text-neutral-500 mb-6 flex-1">{cam.description || "No description provided."}</p>
+                    
+                    <div className="flex items-center justify-between pt-4 border-t border-neutral-800">
+                      <button 
+                        onClick={() => toggleStatus(cam)}
+                        className={`flex items-center text-sm font-medium transition-colors ${cam.status === 'ONLINE' ? 'text-red-400 hover:text-red-300' : 'text-emerald-400 hover:text-emerald-300'}`}
+                      >
+                        {cam.status === 'ONLINE' ? (
+                          <><Square className="w-4 h-4 mr-1.5" /> Stop</>
+                        ) : (
+                          <><Play className="w-4 h-4 mr-1.5" /> Start</>
+                        )}
+                      </button>
+                      
+                      <div className="flex space-x-2">
+                        <button onClick={() => openEdit(cam)} className="p-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-neutral-300 transition-colors">
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleDelete(cam.id)} className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded-lg text-red-400 transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="text-center py-20 border-2 border-dashed border-neutral-800 rounded-2xl bg-neutral-900/50">

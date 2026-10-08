@@ -1,54 +1,42 @@
 import torch
-from transformers import CLIPProcessor, CLIPModel
+import open_clip
 from PIL import Image
 import numpy as np
 
 class EmbeddingService:
-    def __init__(self, model_name: str = "openai/clip-vit-base-patch32"):
+    def __init__(self, model_name: str = "ViT-B-16-SigLIP", pretrained: str = "webli"):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model_name = model_name
         
-        # Load the multimodal model (CLIP) which supports shared image/text embedding spaces
-        self.model = CLIPModel.from_pretrained(self.model_name).to(self.device)
-        self.processor = CLIPProcessor.from_pretrained(self.model_name)
-        self.vector_dimension = self.model.config.projection_dim
+        print(f"Loading SigLIP model for text embeddings: {model_name}")
+        self.model, _, self.preprocess = open_clip.create_model_and_transforms(self.model_name, pretrained=pretrained)
+        self.model = self.model.to(self.device)
+        self.model.eval()
+        self.tokenizer = open_clip.get_tokenizer(self.model_name)
+        self.vector_dimension = 768
 
     def encode_text(self, text: str) -> list[float]:
-        inputs = self.processor(text=[text], return_tensors="pt", padding=True).to(self.device)
+        text_tokens = self.tokenizer([text]).to(self.device)
         with torch.no_grad():
-            text_features = self.model.get_text_features(**inputs)
-            if not isinstance(text_features, torch.Tensor):
-                text_features = getattr(text_features, 'text_embeds', text_features[0])
-            # Normalize the vector for cosine similarity
+            text_features = self.model.encode_text(text_tokens)
             text_features = text_features / text_features.norm(p=2, dim=-1, keepdim=True)
             
         return text_features.cpu().numpy()[0].tolist()
 
     def encode_image(self, image_path: str) -> list[float]:
         image = Image.open(image_path).convert("RGB")
-        inputs = self.processor(images=image, return_tensors="pt").to(self.device)
+        image_input = self.preprocess(image).unsqueeze(0).to(self.device)
         with torch.no_grad():
-            image_features = self.model.get_image_features(**inputs)
-            if not isinstance(image_features, torch.Tensor):
-                image_features = getattr(image_features, 'image_embeds', getattr(image_features, 'pooler_output', image_features[0]))
-            # Normalize
+            image_features = self.model.encode_image(image_input)
             image_features = image_features / image_features.norm(p=2, dim=-1, keepdim=True)
             
         return image_features.cpu().numpy()[0].tolist()
 
     def encode_images(self, image_paths: list[str]) -> list[list[float]]:
         images = [Image.open(p).convert("RGB") for p in image_paths]
-        inputs = self.processor(images=images, return_tensors="pt").to(self.device)
+        inputs = torch.cat([self.preprocess(img).unsqueeze(0) for img in images]).to(self.device)
         with torch.no_grad():
-            image_features = self.model.get_image_features(**inputs)
-            if not isinstance(image_features, torch.Tensor):
-                image_features = getattr(image_features, 'image_embeds', getattr(image_features, 'pooler_output', image_features[0]))
+            image_features = self.model.encode_image(inputs)
             image_features = image_features / image_features.norm(p=2, dim=-1, keepdim=True)
             
         return image_features.cpu().numpy().tolist()
-
-# Note: In a production celery worker with multiple processes, 
-# it's often better to initialize the model per-worker-process 
-# rather than as a global singleton at import time.
-
-embedding_service = EmbeddingService()

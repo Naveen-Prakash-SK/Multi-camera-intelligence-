@@ -6,8 +6,8 @@ import uuid
 # Global client
 qdrant_client = QdrantClient(url=settings.QDRANT_URL)
 
-COLLECTION_NAME = "video_frames"
-VECTOR_SIZE = 512 # CLIP models usually output 512 dimensions
+COLLECTION_NAME = "video_frames_v2"
+VECTOR_SIZE = 768 # SigLIP2 output dimensions
 
 def init_qdrant(vector_size: int = VECTOR_SIZE):
     collections = qdrant_client.get_collections().collections
