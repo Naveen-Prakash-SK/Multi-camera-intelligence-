@@ -1,0 +1,14 @@
+{
+  "camera_01": {
+    "name": "Camera 01",
+    "location": "Intersection 1 - North"
+  },
+  "camera_02": {
+    "name": "Camera 02",
+    "location": "Intersection 1 - East"
+  },
+  "camera_03": {
+    "name": "Camera 03",
+    "location": "Intersection 1 - South"
+  }
+}

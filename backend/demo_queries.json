@@ -1,0 +1,14 @@
+[
+  {
+    "query": "Show me a car",
+    "camera": "camera_01"
+  },
+  {
+    "query": "Show me a bicycle",
+    "camera": "camera_02"
+  },
+  {
+    "query": "Show me a person",
+    "camera": "camera_03"
+  }
+]
