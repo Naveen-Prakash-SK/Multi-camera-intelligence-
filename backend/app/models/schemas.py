@@ -30,9 +30,11 @@ class SearchResult(BaseModel):
     frame_number: Optional[int] = None
     description: str
     score: float
+    verified: bool = True
     frame_url: str
     clip_url: Optional[str] = None
     video_path: Optional[str] = None
+    verification_details: Optional[str] = None
 
 class SearchResponse(BaseModel):
     query: str

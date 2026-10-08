@@ -3,10 +3,18 @@ import os
 import json
 from .schemas import CameraIn, CameraOut
 
-DB_PATH = "storage/db/app.db"
+# Standardize robust absolute paths
+BACKEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+STORAGE_DIR = os.path.join(BACKEND_DIR, "storage")
+FRAMES_DIR = os.path.join(STORAGE_DIR, "frames")
+CLIPS_DIR = os.path.join(STORAGE_DIR, "clips")
+DB_DIR = os.path.join(STORAGE_DIR, "db")
+DB_PATH = os.path.join(DB_DIR, "app.db")
 
 def init_db():
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    os.makedirs(FRAMES_DIR, exist_ok=True)
+    os.makedirs(CLIPS_DIR, exist_ok=True)
+    os.makedirs(DB_DIR, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
@@ -42,6 +50,19 @@ def init_db():
             embedding TEXT
         )
     ''')
+    
+    # Check if cameras table is empty, if so seed defaults
+    cursor.execute("SELECT COUNT(*) FROM cameras")
+    if cursor.fetchone()[0] == 0:
+        default_cameras = [
+            ("camera_01", "Camera 01", "Intersection 1 - North", "Online"),
+            ("camera_02", "Camera 02", "Intersection 1 - East", "Online"),
+            ("camera_03", "Camera 03", "Intersection 1 - South", "Online")
+        ]
+        cursor.executemany(
+            "INSERT INTO cameras (camera_id, camera_name, location, status) VALUES (?, ?, ?, ?)",
+            default_cameras
+        )
     
     conn.commit()
     conn.close()

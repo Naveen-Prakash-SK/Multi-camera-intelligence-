@@ -61,7 +61,7 @@ const Dashboard = () => {
       setResponse(res.data);
     } catch (err) {
       console.error(err);
-      setResponse({ answer: "Error connecting to server.", results: [] });
+      setResponse({ error: "BACKEND CONNECTION ERROR", results: [] });
     }
     
     setIsSearching(false);
@@ -120,17 +120,27 @@ const Dashboard = () => {
 
       {response && !clarification && (
         <div className="result-card">
-          <div className="result-header">
-            {response.results.length > 0 ? (
-              <><CheckCircle size={24} /> MATCH FOUND</>
-            ) : (
-              <span style={{color: 'var(--danger)'}}>NO MATCHING EVIDENCE FOUND</span>
-            )}
-          </div>
+          {response.error ? (
+            <div className="result-header">
+              <span style={{color: 'var(--danger)'}}>{response.error}</span>
+            </div>
+          ) : (
+            <>
+              <div className="result-header">
+                {response.results && response.results.length > 0 && response.results[0].verified ? (
+                  <span style={{color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                    <CheckCircle size={24} /> MATCH FOUND
+                  </span>
+                ) : (
+                  <span style={{color: 'var(--danger)'}}>NO VERIFIED MATCH FOUND</span>
+                )}
+              </div>
+              
+              <p style={{marginBottom: '25px', fontSize: '1.1rem'}}>{response.answer}</p>
+            </>
+          )}
           
-          <p style={{marginBottom: '25px', fontSize: '1.1rem'}}>{response.answer}</p>
-          
-          {response.results.length > 0 && (
+          {response.results && response.results.length > 0 && response.results[0].verified && (
             <div>
               <div className="result-meta">
                 <div className="meta-item">
@@ -155,13 +165,20 @@ const Dashboard = () => {
                 <h4 style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
                   <ImageIcon size={18} /> Evidence Frame
                 </h4>
-                {response.results[0].frame_url && (
+                {response.results[0].frame_url ? (
                    <img 
                      src={`http://localhost:8000${response.results[0].frame_url}`} 
                      alt="Evidence" 
                      className="evidence-img"
+                     onError={(e) => { 
+                       e.target.style.display = 'none'; 
+                       if (e.target.nextSibling) e.target.nextSibling.style.display = 'block'; 
+                     }}
                    />
-                )}
+                ) : null}
+                <div style={{display: response.results[0].frame_url ? 'none' : 'block', color: 'var(--danger)', padding: '15px 0'}}>
+                  EVIDENCE UNAVAILABLE
+                </div>
                 
                 {response.results[0].clip_url && (
                   <div style={{marginTop: '20px'}}>
