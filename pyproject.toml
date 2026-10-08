@@ -1,0 +1,20 @@
+[project]
+name = "24hr-ku"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.20.0",
+    "celery>=5.6.3",
+    "fastapi>=0.143.0",
+    "httpx>=0.28.1",
+    "psycopg2-binary>=2.9.13",
+    "pydantic>=2.13.5",
+    "pydantic-settings>=2.15.0",
+    "python-dotenv>=1.2.4",
+    "qdrant-client>=1.19.1",
+    "redis>=8.1.0",
+    "sqlalchemy>=2.1.4",
+    "uvicorn>=0.54.0",
+]
