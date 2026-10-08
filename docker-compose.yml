@@ -1,18 +1,16 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgrespassword
-      POSTGRES_DB: multicam
+      POSTGRES_DB: video_intelligence
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d multicam"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d video_intelligence"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -36,9 +34,52 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
 
-  # We will assume Ollama runs on the host for local GPU access, 
-  # but we can optionally include it here for CPU-only testing.
-  # For hackathon, usually Ollama is run directly on the host or dedicated GPU server.
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgrespassword@postgres:5432/video_intelligence
+      - REDIS_URL=redis://redis:6379/0
+      - QDRANT_URL=http://qdrant:6333
+      - OLLAMA_BASE_URL=https://rhn43w49-11434.inc1.devtunnels.ms
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+
+  celery_worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: ["uv", "run", "celery", "-A", "app.workers.celery_app", "worker", "--loglevel=info"]
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgrespassword@postgres:5432/video_intelligence
+      - REDIS_URL=redis://redis:6379/0
+      - QDRANT_URL=http://qdrant:6333
+      - OLLAMA_BASE_URL=https://rhn43w49-11434.inc1.devtunnels.ms
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+    depends_on:
+      - backend
 
 volumes:
   postgres_data:
