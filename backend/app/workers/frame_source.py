@@ -52,6 +52,51 @@ class RecordedVideoSource(FrameSource):
         if self.cap.isOpened():
             self.cap.release()
 
+class FFmpegVideoSource(FrameSource):
+    """
+    Video preprocessing pipeline using FFmpeg and OpenCV.
+    Uses FFmpeg to decode, scale, and sample frames, piping directly to OpenCV as raw bytes.
+    This is significantly faster and more robust than cv2.VideoCapture for large files.
+    """
+    def __init__(self, file_path: str, fps_sample_rate: float = 1.0, width: int = 1280, height: int = 720):
+        import subprocess
+        self.file_path = file_path
+        self.fps = fps_sample_rate
+        self.width = width
+        self.height = height
+        
+        # FFmpeg command to read video, scale it, set fps, and output raw BGR24 frames to stdout
+        command = [
+            'ffmpeg',
+            '-y',
+            '-i', self.file_path,
+            '-vf', f'scale={self.width}:{self.height},fps={self.fps}',
+            '-f', 'image2pipe',
+            '-pix_fmt', 'bgr24',
+            '-vcodec', 'rawvideo',
+            '-'
+        ]
+        
+        self.process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=10**8)
+        self.frame_size = self.width * self.height * 3
+        
+    def get_frames(self) -> Iterator[Tuple[int, float, np.ndarray]]:
+        frame_count = 0
+        while True:
+            raw_frame = self.process.stdout.read(self.frame_size)
+            if len(raw_frame) != self.frame_size:
+                break
+                
+            frame = np.frombuffer(raw_frame, np.uint8).reshape((self.height, self.width, 3))
+            timestamp_s = frame_count / self.fps
+            yield frame_count, timestamp_s, frame
+            frame_count += 1
+            
+    def close(self):
+        if self.process:
+            self.process.terminate()
+            self.process.wait()
+
 class LiveStreamBuffer(FrameSource):
     """
     Conceptual architecture for future live streaming.

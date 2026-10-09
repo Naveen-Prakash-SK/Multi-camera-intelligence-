@@ -13,7 +13,7 @@ class EmbeddingService:
         self.model = self.model.to(self.device)
         self.model.eval()
         self.tokenizer = open_clip.get_tokenizer(self.model_name)
-        self.vector_dimension = 768
+        self.vector_dimension = 512
 
     def encode_text(self, text: str) -> list[float]:
         text_tokens = self.tokenizer([text]).to(self.device)

@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 };
 
 import { Header } from "@/components/Header";
+import { AuthProvider } from "@/components/AuthProvider";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -26,8 +27,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col text-slate-900 selection:bg-blue-500/30">
-        <Header />
-        {children}
+        <AuthProvider>
+          <Header />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

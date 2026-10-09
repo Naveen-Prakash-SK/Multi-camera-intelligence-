@@ -110,3 +110,18 @@ def health_models() -> Dict[str, Any]:
             pass
             
     return models
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.api.deps import get_db
+
+@router.get("/api/stats")
+async def get_system_stats(db: AsyncSession = Depends(get_db)) -> Dict[str, int]:
+    try:
+        footage = await db.execute(text("SELECT COUNT(*) FROM video_file"))
+        events = await db.execute(text("SELECT COUNT(*) FROM evidence"))
+        return {
+            "footage": footage.scalar() or 0,
+            "events": events.scalar() or 0
+        }
+    except Exception as e:
+        return {"footage": 0, "events": 0}

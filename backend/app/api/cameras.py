@@ -74,8 +74,46 @@ async def delete_camera(id: UUID4, db: AsyncSession = Depends(get_db)):
     camera = result.scalars().first()
     if not camera:
         raise HTTPException(status_code=404, detail="Camera not found")
-    await db.delete(camera)
-    await db.commit()
+        
+    try:
+        from sqlalchemy import text
+        
+        # 1. Delete all detections for frames of videos of this camera
+        await db.execute(text("""
+            DELETE FROM detection 
+            WHERE frame_id IN (
+                SELECT id FROM frame WHERE video_id IN (
+                    SELECT id FROM video_file WHERE camera_id = :camera_id
+                )
+            )
+        """), {"camera_id": id})
+        
+        # 2. Delete all frames for videos of this camera
+        await db.execute(text("""
+            DELETE FROM frame 
+            WHERE video_id IN (
+                SELECT id FROM video_file WHERE camera_id = :camera_id
+            )
+        """), {"camera_id": id})
+
+        # 3. Delete other entities
+        await db.execute(text("DELETE FROM global_track WHERE camera_id = :camera_id"), {"camera_id": id})
+        await db.execute(text("DELETE FROM evidence WHERE camera_id = :camera_id"), {"camera_id": id})
+        await db.execute(text("DELETE FROM alert WHERE camera_id = :camera_id"), {"camera_id": id})
+        await db.execute(text("DELETE FROM standing_query WHERE camera_id = :camera_id"), {"camera_id": id})
+        await db.execute(text("DELETE FROM scene_memory WHERE camera_id = :camera_id"), {"camera_id": id})
+        await db.execute(text("DELETE FROM camera_zone WHERE camera_id = :camera_id"), {"camera_id": id})
+        
+        # 4. Delete video files
+        await db.execute(text("DELETE FROM video_file WHERE camera_id = :camera_id"), {"camera_id": id})
+        
+        # Finally delete camera
+        await db.execute(text("DELETE FROM camera WHERE id = :camera_id"), {"camera_id": id})
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=f"Failed to delete camera: {str(e)}")
+        
     return {"status": "Deleted"}
 
 @router.post("/api/cameras/{id}/start")
@@ -158,6 +196,7 @@ async def record_camera(id: UUID4, duration: int = 5, db: AsyncSession = Depends
         camera_id=camera.id,
         file_path=output_path,
         duration_s=duration,
+        provenance="recorded_live",
         capture_start_utc=timestamp_utc
     )
     db.add(new_video)
@@ -165,9 +204,10 @@ async def record_camera(id: UUID4, duration: int = 5, db: AsyncSession = Depends
     job_id = uuid.uuid4()
     new_job = Job(
         id=job_id,
-        video_id=uuid.UUID(file_id),
+        job_type="record",
         status="QUEUED",
-        progress=0.0
+        progress=0.0,
+        metadata_payload={"video_id": str(file_id)}
     )
     db.add(new_job)
     await db.commit()

@@ -85,3 +85,24 @@ async def get_job_status(id: UUID4, db: AsyncSession = Depends(get_db)):
         "started_at": job.started_at,
         "completed_at": job.completed_at
     }
+
+@router.get("/api/footage")
+async def list_footage(camera_id: Optional[UUID4] = None, db: AsyncSession = Depends(get_db)):
+    query = select(VideoFile)
+    if camera_id:
+        query = query.where(VideoFile.camera_id == camera_id)
+    query = query.order_by(VideoFile.capture_start_utc.desc())
+    result = await db.execute(query)
+    videos = result.scalars().all()
+    
+    return [
+        {
+            "id": str(v.id),
+            "camera_id": str(v.camera_id),
+            "capture_start_utc": v.capture_start_utc,
+            "provenance": v.provenance,
+            "url": f"/storage/{os.path.basename(v.file_path)}",
+            "duration_s": v.duration_s
+        }
+        for v in videos
+    ]

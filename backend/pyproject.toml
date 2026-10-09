@@ -21,6 +21,7 @@ dependencies = [
     "pydantic-settings>=2.15.0",
     "python-dotenv>=1.2.4",
     "python-multipart>=0.0.32",
+    "pyjwt>=2.8.0",
     "qdrant-client>=1.19.1",
     "redis>=8.1.0",
     "requests>=2.34.2",
@@ -33,3 +34,12 @@ dependencies = [
     "lapx>=0.5.5",
     "open-clip-torch>=2.24.0",
 ]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

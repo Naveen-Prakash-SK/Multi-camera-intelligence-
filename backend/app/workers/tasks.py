@@ -42,9 +42,14 @@ def process_video_pipeline(self, job_id: str, video_id: str, file_path: str, cam
         try:
             self.update_state(state='DECODING', meta={'progress': 5, 'step': 'init'})
             
-            # Use new abstraction instead of direct OpenCV
+            # Use FFmpeg pipeline for robust decoding and scaling
             fps_sample_rate = float(os.getenv("FRAME_SAMPLE_FPS", "1.0"))
-            video_source = RecordedVideoSource(file_path, fps_sample_rate=fps_sample_rate)
+            from app.workers.frame_source import FFmpegVideoSource, RecordedVideoSource
+            try:
+                video_source = FFmpegVideoSource(file_path, fps_sample_rate=fps_sample_rate)
+            except Exception as e:
+                print(f"FFmpeg pipeline failed, falling back to OpenCV: {e}")
+                video_source = RecordedVideoSource(file_path, fps_sample_rate=fps_sample_rate)
             
             base_time = datetime.fromisoformat(capture_start_utc.replace("Z", "+00:00"))
             
@@ -60,7 +65,6 @@ def process_video_pipeline(self, job_id: str, video_id: str, file_path: str, cam
             orig_fps = tmp_cap.get(cv2.CAP_PROP_FPS) or 25.0
             tmp_cap.release()
             
-            import os
             from app.core.config import settings
             annotated_filename = f"annotated_{video_id}.mp4"
             annotated_path = os.path.join(settings.STORAGE_PATH, annotated_filename)
@@ -242,9 +246,12 @@ def process_live_stream_task(self, camera_id: str, stream_url: str):
             print(f"Stop signal received for camera {camera_id}")
             break
             
-        cap = cv2.VideoCapture(stream_url)
-        if not cap.isOpened():
-            print(f"Failed to open live stream: {stream_url}. Retrying...")
+        try:
+            from app.workers.frame_source import FFmpegVideoSource
+            # Lower resolution to 640x480 at 5 FPS for live streaming to save CPU across multiple cameras
+            video_source = FFmpegVideoSource(stream_url, fps_sample_rate=5.0, width=640, height=480)
+        except Exception as e:
+            print(f"Failed to open live stream: {stream_url}. Error: {e}. Retrying...")
             reconnect_attempts += 1
             
             with SyncSessionLocal() as db:
@@ -264,37 +271,70 @@ def process_live_stream_task(self, camera_id: str, stream_url: str):
                 camera.status = "RUNNING"
                 db.commit()
         
-        while cap.isOpened():
-            if redis_client.get(stop_key):
-                break
+        try:
+            print(f"Starting frame loop for {camera_id}...", flush=True)
+            for frame_count, _, frame in video_source.get_frames():
+                if frame_count % 10 == 0:
+                    print(f"Processed {frame_count} frames...", flush=True)
                 
-            start_time = time.time()
-            ret, frame = cap.read()
-            if not ret:
-                print("Stream ended or disconnected.")
-                break
+                if redis_client.get(stop_key):
+                    print("Stop key found, breaking.", flush=True)
+                    break
+                    
+                start_time = time.time()
                 
-            # Encode RAW frame to JPEG for Redis
-            _, raw_jpeg = cv2.imencode('.jpg', frame)
-            redis_client.set(f"camera:{camera_id}:raw", raw_jpeg.tobytes(), ex=10) # 10s TTL
-            
-            # Process frame
-            timestamp_s = time.time()
-            pipeline_results = advanced_pipeline.process_frame(frame, timestamp_s, camera_id)
-            
-            processed_frame = pipeline_results["frame_bgr"]
-            
-            # Encode PROCESSED frame to JPEG for Redis
-            _, proc_jpeg = cv2.imencode('.jpg', processed_frame)
-            redis_client.set(f"camera:{camera_id}:processed", proc_jpeg.tobytes(), ex=10)
-            
-            # Rate limit processing to ~5 fps (0.2s per frame)
-            elapsed = time.time() - start_time
-            if elapsed < 0.2:
-                time.sleep(0.2 - elapsed)
+                # Encode RAW frame to JPEG for Redis
+                _, raw_jpeg = cv2.imencode('.jpg', frame)
+                redis_client.set(f"camera:{camera_id}:raw", raw_jpeg.tobytes(), ex=30) # 30s TTL
                 
-        cap.release()
-        
+                # Process frame
+                timestamp_s = time.time()
+                pipeline_results = advanced_pipeline.process_frame(frame, timestamp_s, camera_id)
+                
+                processed_frame = pipeline_results["frame_bgr"]
+                
+                # Encode PROCESSED frame to JPEG for Redis
+                _, proc_jpeg = cv2.imencode('.jpg', processed_frame)
+                redis_client.set(f"camera:{camera_id}:processed", proc_jpeg.tobytes(), ex=30) # 30s TTL
+
+                
+                # Evaluate Standing Queries every 5 seconds
+                if not hasattr(video_source, 'last_sq_check') or (timestamp_s - video_source.last_sq_check) > 5.0:
+                    video_source.last_sq_check = timestamp_s
+                    from app.models.core import StandingQuery
+                    from app.models.events import Alert
+                    
+                    with SyncSessionLocal() as db_sq:
+                        queries = db_sq.query(StandingQuery).filter(StandingQuery.enabled == True).all()
+                        for q in queries:
+                            if q.camera_id and str(q.camera_id) != camera_id:
+                                continue
+                                
+                            target_entity = q.structured_query.get("entity", "").lower()
+                            if not target_entity:
+                                continue
+                                
+                            for det in pipeline_results["detections"]:
+                                if det["label"] == target_entity and det["confidence"] > 0.5:
+                                    # Trigger alert
+                                    alert = Alert(
+                                        standing_query_id=q.id,
+                                        camera_id=uuid.UUID(camera_id),
+                                        message=f"Alert Matched: '{q.original_query}'. Detected {det['label']} ({det['confidence']:.2f})",
+                                        frame_path="" 
+                                    )
+                                    db_sq.add(alert)
+                                    # we only alert once per interval
+                                    break
+                        db_sq.commit()
+                
+                # Encode PROCESSED frame to JPEG for Redis
+                _, proc_jpeg = cv2.imencode('.jpg', processed_frame)
+                redis_client.set(f"camera:{camera_id}:processed", proc_jpeg.tobytes(), ex=10)
+                
+        finally:
+            video_source.close()
+            
         if redis_client.get(stop_key):
             break
             

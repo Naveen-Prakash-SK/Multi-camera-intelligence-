@@ -35,13 +35,17 @@ services:
       - qdrant_data:/qdrant/storage
 
   backend:
+    container_name: 24hr-ku-backend-v3
     build:
       context: ./backend
       dockerfile: Dockerfile
+      network: default
     ports:
       - "8000:8000"
     volumes:
       - storage_data:/app/storage
+      - ./backend:/app
+      - /app/.venv
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgrespassword@postgres:5432/video_intelligence
       - REDIS_URL=redis://redis:6379/0
@@ -54,11 +58,20 @@ services:
         condition: service_healthy
       qdrant:
         condition: service_started
+#    deploy:
+#      resources:
+#        reservations:
+#          devices:
+#            - driver: nvidia
+#              count: 1
+#              capabilities: [gpu]
 
   celery_worker:
+    container_name: 24hr-ku-celery_worker-v3
     build:
       context: ./backend
       dockerfile: Dockerfile
+      network: default
     command: ["uv", "run", "celery", "-A", "app.workers.celery_app", "worker", "--loglevel=info"]
     volumes:
       - storage_data:/app/storage
@@ -74,8 +87,16 @@ services:
         condition: service_healthy
       qdrant:
         condition: service_started
+#    deploy:
+#      resources:
+#        reservations:
+#          devices:
+#            - driver: nvidia
+#              count: 1
+#              capabilities: [gpu]
 
   frontend:
+    container_name: 24hr-ku-frontend-v3
     build:
       context: ./frontend
     ports:

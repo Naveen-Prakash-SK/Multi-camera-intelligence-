@@ -109,15 +109,18 @@ export default function AlertsPage() {
             </h2>
             <div className="space-y-4">
               {alerts.map((a) => (
-                <div key={a.id} className="p-4 bg-rose-50/50 border border-rose-100 rounded-2xl">
+                <div key={a.id} className="p-4 bg-rose-50/50 border border-rose-100 rounded-2xl shadow-sm hover:shadow-md transition-all">
                   <div className="flex justify-between items-start mb-2">
-                    <p className="font-bold text-rose-900">{a.query_text}</p>
-                    <span className="text-xs font-bold text-rose-500 bg-rose-100 px-2 py-1 rounded-full">
-                      {new Date(a.created_at).toLocaleTimeString()}
+                    <p className="font-bold text-rose-900">{a.message.split('.')[0]}</p>
+                    <span className="text-[10px] font-bold text-rose-500 bg-rose-100 px-2 py-1 rounded-full uppercase tracking-widest shrink-0">
+                      {new Date(a.timestamp).toLocaleTimeString()}
                     </span>
                   </div>
-                  <p className="text-sm text-rose-700">{a.event_summary}</p>
-                  <p className="text-xs text-rose-400 mt-2 font-mono break-all">{a.event_id}</p>
+                  <p className="text-sm text-rose-700">{a.message}</p>
+                  <div className="mt-3 flex justify-between items-center border-t border-rose-100 pt-3">
+                    <p className="text-[10px] text-rose-400 font-mono tracking-wider">CAM: {a.camera_id.split('-')[0]}</p>
+                    {!a.is_read && <span className="w-2 h-2 rounded-full bg-rose-500"></span>}
+                  </div>
                 </div>
               ))}
               {alerts.length === 0 && (

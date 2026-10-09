@@ -6,8 +6,8 @@ import uuid
 # Global client
 qdrant_client = QdrantClient(url=settings.QDRANT_URL)
 
-COLLECTION_NAME = "video_frames_v2"
-VECTOR_SIZE = 768 # SigLIP2 output dimensions
+COLLECTION_NAME = "video_frames_v4"
+VECTOR_SIZE = 512 # SigLIP2 (ViT-B-16) output dimensions
 
 def init_qdrant(vector_size: int = VECTOR_SIZE):
     collections = qdrant_client.get_collections().collections
@@ -72,6 +72,14 @@ def index_frame(
     )
 
 def search_frames(query_embedding: list[float], limit: int = 10, camera_id: str = None, time_range: tuple = None):
+    # Check if collection has any points first
+    try:
+        collection_info = qdrant_client.get_collection(collection_name=COLLECTION_NAME)
+        if collection_info.points_count == 0:
+            return []
+    except Exception:
+        return []
+
     # Optional filtering
     from qdrant_client.http import models as rest
     must_conditions = []
@@ -97,10 +105,11 @@ def search_frames(query_embedding: list[float], limit: int = 10, camera_id: str 
         
     query_filter = rest.Filter(must=must_conditions) if must_conditions else None
     
-    response = qdrant_client.query_points(
+    results = qdrant_client.search(
         collection_name=COLLECTION_NAME,
-        query=query_embedding,
+        query_vector=query_embedding,
         query_filter=query_filter,
         limit=limit
     )
-    return response.points
+    return results
+

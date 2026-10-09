@@ -22,7 +22,13 @@ COPY pyproject.toml uv.lock ./
 # Install dependencies using uv
 ENV UV_NATIVE_TLS=1
 ENV UV_SYSTEM_CERTS=1
-RUN uv sync --frozen
+ENV UV_HTTP_TIMEOUT=1200
+ENV UV_CONCURRENT_DOWNLOADS=4
+RUN --mount=type=cache,target=/root/.cache/uv \
+    for i in 1 2 3 4 5; do \
+      echo "Attempt $i..." && uv sync && break || \
+      echo "Attempt $i failed, retrying in 10s..." && sleep 10; \
+    done
 
 # Copy the rest of the application code
 COPY . .

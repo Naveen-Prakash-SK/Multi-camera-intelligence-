@@ -1,20 +1,32 @@
-import { Camera, SceneMemory, QueryResponse, SystemHealth, ProcessingJob } from "@/types";
+import { Camera, SceneMemory, QueryResponse, SystemHealth, ProcessingJob, VideoFile } from "@/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
 class ApiClient {
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const url = `${BASE_URL}${endpoint}`;
+    
+    // Add token if it exists (only in browser environment)
+    let token = null;
+    if (typeof window !== "undefined") {
+      token = localStorage.getItem("token");
+    }
+    
     try {
       const response = await fetch(url, {
         ...options,
         headers: {
           "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
           ...options?.headers,
         },
       });
 
       if (!response.ok) {
+        if (response.status === 401 && typeof window !== "undefined") {
+          localStorage.removeItem("token");
+          window.location.reload();
+        }
         let errorMessage = `HTTP Error ${response.status}`;
         try {
           const errorData = await response.json();
@@ -34,13 +46,25 @@ class ApiClient {
 
   private async requestFormData<T>(endpoint: string, formData: FormData): Promise<T> {
     const url = `${BASE_URL}${endpoint}`;
+    let token = null;
+    if (typeof window !== "undefined") {
+      token = localStorage.getItem("token");
+    }
+    
     try {
       const response = await fetch(url, {
         method: "POST",
         body: formData,
+        headers: {
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+        }
       });
 
       if (!response.ok) {
+        if (response.status === 401 && typeof window !== "undefined") {
+          localStorage.removeItem("token");
+          window.location.reload();
+        }
         let errorMessage = `HTTP Error ${response.status}`;
         try {
           const errorData = await response.json();
@@ -114,6 +138,11 @@ class ApiClient {
     return this.requestFormData("/api/footage", formData);
   }
 
+  async getFootage(cameraId?: string): Promise<VideoFile[]> {
+    const url = cameraId ? `/api/footage?camera_id=${cameraId}` : `/api/footage`;
+    return this.request<VideoFile[]>(url);
+  }
+
   async getJobStatus(id: string): Promise<ProcessingJob> {
     return this.request<ProcessingJob>(`/api/jobs/${id}`);
   }
@@ -148,11 +177,11 @@ class ApiClient {
   
   // Standing Queries and Alerts
   async getStandingQueries(): Promise<any[]> {
-    return this.request<any[]>("/api/standing-queries");
+    return this.request<any[]>("/api/standing_queries");
   }
 
   async createStandingQuery(data: { query: string, condition: string, cooldown_seconds: number }): Promise<any> {
-    return this.request<any>("/api/standing-queries", {
+    return this.request<any>("/api/standing_queries", {
       method: "POST",
       body: JSON.stringify(data),
     });
