@@ -32,3 +32,8 @@ This document records the major design and architecture decisions for the Multi-
 ## 6. Time Model
 - **Decision**: All timestamps are stored and processed in absolute UTC. Frames/observations will explicitly carry both video offset (`source_pts_ms`) and absolute `source_timestamp_utc`.
 - **Reason**: Dealing with multiple cameras inherently means dealing with clock drift and varying timezones. A rigid adherence to UTC and exact PTS (Presentation Time Stamp) offsets ensures accurate multi-camera temporal cross-referencing.
+
+## 7. Branch Unification & Merge
+- **Decision**: Merged `master` (MVP baseline with video demo datasets, verification scripts, and test suite) into `main` (production microservice stack with Next.js, FastAPI, Celery, and Qdrant).
+- **Reason**: The repository had divergent `main` and `master` branches from parallel development. Unifying them into `main` provides a single authoritative source of truth, integrates the real demo videos and metadata into the platform, and retains full Next.js App Router and microservice capabilities.
+
