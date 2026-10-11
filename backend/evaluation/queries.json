@@ -1,0 +1,22 @@
+[
+  {
+    "id": "test_001",
+    "query": "Did a red car pass through the main gate between 9 AM and 10 AM?"
+  },
+  {
+    "id": "test_002",
+    "query": "Where did the same red car appear after leaving the main gate?"
+  },
+  {
+    "id": "test_003",
+    "query": "Person carrying a large umbrella entering lobby"
+  },
+  {
+    "id": "test_004",
+    "query": "White delivery truck parked at loading dock"
+  },
+  {
+    "id": "test_negative_001",
+    "query": "Did an airplane land in the parking lot?"
+  }
+]

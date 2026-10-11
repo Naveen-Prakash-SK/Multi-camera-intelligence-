@@ -1,0 +1,45 @@
+[project]
+name = "24hr-ku"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.20.0",
+    "asyncpg>=0.32.0",
+    "celery>=5.6.3",
+    "fastapi>=0.143.0",
+    "greenlet>=3.5.6",
+    "httpx>=0.28.1",
+    "lapx>=0.10.0",
+    "open-clip-torch>=3.3.0",
+    "openai>=3.26.1",
+    "opencv-python-headless>=5.0.0.93",
+    "pillow>=12.3.0",
+    "psycopg2-binary>=2.9.13",
+    "pydantic>=2.13.5",
+    "pydantic-settings>=2.15.0",
+    "python-dotenv>=1.2.4",
+    "python-multipart>=0.0.32",
+    "pyjwt>=2.8.0",
+    "qdrant-client>=1.19.1",
+    "redis>=8.1.0",
+    "requests>=2.34.2",
+    "sqlalchemy>=2.1.4",
+    "torch>=2.14.1",
+    "torchvision>=0.29.1",
+    "transformers>=5.19.0",
+    "uvicorn>=0.54.0",
+    "ultralytics>=8.1.0",
+    "lapx>=0.5.5",
+    "open-clip-torch>=2.24.0",
+]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

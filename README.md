@@ -1,30 +1,74 @@
-# Multi-camera-intelligence-
+# Multi-Camera Intelligence Platform
 
 **"Ask your cameras what happened."**
 
 ## Problem Statement
-HNX26EPS05 — Multi-Stream Video Intelligence with Conversational Query.
-This system accepts multiple recorded CCTV streams/videos, detects/indexes events across cameras, and provides a conversational interface where users can ask natural-language questions (e.g. "Did a red car pass through the main gate?").
+**HNX26EPS05 — Multi-Stream Video Intelligence with Conversational Query.**
+This system accepts multiple CCTV video streams and recorded footage, detects and indexes events across cameras, and provides a conversational intelligence interface where users can ask natural-language questions (e.g., *"Did a red car pass through the main gate?"*, *"Was there a person carrying a bag in the lobby?"*).
 
-## MVP Features
-1. **Multi-Camera Input**: Supports processing of multiple `.mp4` video files representing different CCTV cameras.
-2. **Video Processing & Indexing**: Extracts frames from videos, classifies events using a zero-shot vision-language model (CLIP), and indexes embeddings for semantic search.
-3. **Conversational Search**: Search across multiple cameras using natural language.
-4. **Grounded Responses**: Results return exact camera, timestamp, and visual evidence (frames).
-5. **Clarify-Once Memory**: If the system doesn't know what "main gate" refers to, it asks the user to clarify which camera, and remembers the mapping for future queries.
-6. **Dark Professional UI**: A clean, security-focused web dashboard built with React.
+---
 
-## Architecture & Tech Stack
-- **Frontend**: React (Vite) + Vanilla CSS + Lucide Icons.
-- **Backend**: Python + FastAPI.
-- **Computer Vision**: OpenCV (frame extraction), HuggingFace Transformers (CLIP model for zero-shot image embeddings and classification).
-- **Database/Vector Store**: SQLite for metadata, events, and clarify-once memory; Numpy cosine similarity for lightweight vector search.
+## System Architecture
 
-## Installation
+The application is built using a containerized microservices architecture:
 
-### Prerequisites
-- Python 3.10+
-- Node.js 18+
+- **Frontend:** Next.js (React), Tailwind CSS, Lucide Icons
+- **Backend:** FastAPI (Python), SQLAlchemy, asyncpg
+- **Worker:** Celery (configured with `-P solo` for stable AI model inference)
+- **Computer Vision & ML:** OpenCV, FFmpeg, Ultralytics YOLO, SigLIP (OpenCLIP), Transformers
+- **Databases & Caching:** 
+  - **PostgreSQL**: Primary application state, metadata, and relations
+  - **Redis**: Celery broker and MJPEG frame buffer
+  - **Qdrant**: Vector database for dense semantic search
+  - **SQLite**: Local caching & MVP lightweight persistence
+
+---
+
+## Core Features
+
+- **Live Camera Streaming:** Ingest RTSP/HTTP streams via FFmpeg, process frames in real-time (object detection, privacy blurring), and serve MJPEG streams directly to the dashboard.
+- **Video File Analysis:** Upload or process recorded CCTV footage for asynchronous frame-by-frame analysis and embedding generation.
+- **Semantic & Natural Language Search:** Search through video events using natural language queries with similarity scoring and grounded evidence.
+- **Visual Evidence Grounding:** Responses return the exact camera, timestamp, confidence score, and visual evidence frames/clips.
+- **Clarify-Once Memory:** Disambiguates conversational location references (e.g. mapping "main gate" to specific cameras) and persists the mapping for future queries.
+- **Privacy Enforcement:** Automatic detection and blurring of sensitive objects (e.g., faces, license plates).
+- **Standing Queries & Alerts:** Define persistent queries that trigger alerts when specific events are detected in the video stream.
+
+---
+
+## Prerequisites
+
+- Python 3.10+ / Node.js 18+
+- Docker and Docker Compose
+- (Optional) NVIDIA GPU with Docker support for accelerated inference
+
+---
+
+## Quick Start (Docker Compose - Recommended)
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/Naveen-Prakash-SK/Multi-camera-intelligence-.git
+   cd Multi-camera-intelligence-
+   ```
+
+2. **Start all services with Docker Compose:**
+   ```bash
+   docker-compose up -d --build
+   ```
+   This spins up: `postgres`, `redis`, `qdrant`, `backend`, `celery_worker`, and `frontend`.
+
+3. **Access the Application:**
+   - **Frontend Dashboard:** [http://localhost:3000](http://localhost:3000)
+   - **Backend API Docs (Swagger UI):** [http://localhost:8000/docs](http://localhost:8000/docs)
+
+### Default Credentials
+- **Email:** `admin@gmail.com`
+- **Password:** `passs123456`
+
+---
+
+## Standalone Local Setup
 
 ### 1. Backend Setup
 ```powershell
@@ -32,72 +76,65 @@ cd backend
 python -m venv venv
 .\venv\Scripts\activate
 pip install -r requirements.txt
+# Run migrations / initialization
+python seed_db.py
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ### 2. Frontend Setup
 ```powershell
 cd frontend
 npm install
-```
-
-## How to Add CCTV Videos (Demo Data)
-
-To test the system, you must provide some sample `.mp4` videos.
-
-1. Place your CCTV video files in the `backend/data/` directory (create the directory if it doesn't exist).
-2. Start the backend.
-3. Run the initial data script to register the demo cameras in the database:
-   ```powershell
-   cd backend
-   .\venv\Scripts\activate
-   python init_demo_data.py
-   ```
-4. Process the videos (this will extract frames and index them). You can do this via an API tool (e.g. Postman, cURL) or a simple Python script.
-   
-   Example processing request:
-   ```powershell
-   curl -X POST "http://localhost:8000/api/process" -H "Content-Type: application/json" -d '{"camera_id": "camera_01", "video_path": "data/camera_01.mp4"}'
-   ```
-   *Repeat this for `camera_02.mp4` and `camera_03.mp4` with their respective `camera_id`s.*
-
-## Starting the Application
-
-### Start Backend
-```powershell
-cd backend
-.\venv\Scripts\activate
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-### Start Frontend
-```powershell
-cd frontend
 npm run dev
 ```
-Then navigate to `http://localhost:5173`.
+Navigate to `http://localhost:3000`.
 
-## Demo Flow
+---
 
-1. Open the UI.
-2. Go to the **Cameras** page to verify the cameras are online.
-3. Go to **Ask Cameras** (Dashboard) and ask a query:
-   - *"Did a red car enter the main gate?"*
-   - *"Was there a person carrying a bag in the lobby?"*
-4. The system will retrieve the matching camera, timestamp, and display the evidence frame.
-5. **Clarify-Once Demo**:
-   - Ask: *"Did anyone enter the main gate?"*
-   - If the system doesn't know "main gate", a clarification card will appear.
-   - Select the correct camera (e.g., "Camera 01 - Main Gate").
-   - The query will automatically re-run.
-   - Restart the backend and ask again to verify it remembers.
+## Demo Dataset & Video Processing
 
-## Known Limitations (Hackathon MVP)
-- CLIP model runs on CPU by default which can be slow for long videos.
-- Video clips are not fully extracted for evidence; the MVP uses the keyframe image instead.
-- Simple cosine similarity over numpy arrays is used instead of a dedicated vector DB (e.g., FAISS) to eliminate complex dependencies.
+Sample CCTV videos and metadata are included in `backend/data/`:
+- `camera_01.mp4`, `camera_02.mp4`, `camera_03.mp4`
+- `cameras.json`, `demo_queries.json`, `dataset_metadata.json`
 
-## Future Extensions
-- Integrate FAISS for large-scale vector search.
-- Use FFmpeg to dynamically serve trimmed `.mp4` evidence clips instead of static frames.
-- Add live RTSP streaming support.
-- Improve entity extraction using an LLM to parse natural language queries better.
+To register cameras and run batch processing scripts:
+```powershell
+cd backend
+python init_demo_data.py
+python process_all_and_verify.py
+```
+
+---
+
+## Project Structure
+
+```
+├── backend/
+│   ├── app/
+│   │   ├── api/          # FastAPI routers (auth, cameras, footage, memory, query, evidence)
+│   │   ├── core/         # Settings, configuration, security
+│   │   ├── models/       # SQLAlchemy models and schemas
+│   │   ├── providers/    # LLM and inference interfaces (Ollama, CLIP, SigLIP)
+│   │   ├── services/     # Indexer, video processing services
+│   │   ├── vector/       # Qdrant client, embeddings, ReID, detection
+│   │   └── workers/      # Celery task definitions, tracking, frame source
+│   ├── data/             # Demo CCTV footage (.mp4) and metadata
+│   ├── scripts/          # Dataset setup and download utilities
+│   ├── storage/          # Local frame and database storage
+│   ├── Dockerfile
+│   └── main.py           # Backend application entry point
+├── frontend/
+│   ├── src/app/          # Next.js App Router (dashboard, cameras, footage, alerts, timeline)
+│   ├── src/components/   # Reusable UI components & video players
+│   ├── Dockerfile
+│   └── package.json
+└── docker-compose.yml     # Multi-container orchestration
+```
+
+---
+
+## Known Technical Notes
+
+- **Celery Worker Execution:** Celery is run with `-P solo` to prevent multiprocessing/fork issues during Torch and CUDA model initialization.
+- **Database Connection Pooling:** The backend utilizes `NullPool` for async PostgreSQL connections to prevent deadlocks and connection exhaustion.
+- **Live Stream Auth Bypass:** MJPEG stream endpoints (`/api/cameras/.../stream/raw` and `/processed`) bypass JWT authentication for direct browser video compatibility.
