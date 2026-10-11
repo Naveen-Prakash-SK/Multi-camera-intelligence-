@@ -1,0 +1,14 @@
+Camera 03 Video Source Documentation
+=====================================
+Filename: camera_03.mp4
+Source: Intel IoT DevKit Sample Videos (worker-zone-detection.mp4)
+Direct URL: https://raw.githubusercontent.com/intel-iot-devkit/sample-videos/master/worker-zone-detection.mp4
+License: Public Domain / Open Sample
+Resolution: 1920x1080
+FPS: 59.94 (~60 FPS)
+Total Frames: 4548
+Duration: 75.9 seconds
+Scene: Outdoor construction / safety zone
+Visible Objects: Construction workers, safety vests, hard hats, pedestrians walking outdoors
+Observable Events: Workers moving within the designated zone, pedestrian transit across outdoor area
+Verification Status: Visually inspected and verified.

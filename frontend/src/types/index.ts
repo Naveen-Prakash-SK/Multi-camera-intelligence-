@@ -10,7 +10,7 @@ export interface Camera {
   gateway_id?: string;
   stream_url?: string;
   source_type?: string;
-  status: "ONLINE" | "OFFLINE" | "ERROR" | "CONNECTING";
+  status: "ONLINE" | "OFFLINE" | "ERROR" | "CONNECTING" | "RUNNING";
   clock_offset_ms: number;
   location?: string;
   description?: string;
